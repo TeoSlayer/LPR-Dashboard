@@ -1,310 +1,436 @@
 import Head from 'next/head'
 import Image from 'next/image'
-import fs from 'fs';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import moment from 'moment';
 import Modal from 'react-bootstrap/Modal';
-export function getServerSideProps(context) {
-  //we have a folder where we have a series of images
-  //these images have a name in the following format: "TR04FEN_20211212114111243_PLATE.jpg" or "TR04FEN_20211212114111243_BACKGROUND.jpg"
-  //We want to get a list of all these images in a workable format and the list has to also contain the data from the name properly formatted
-  //In the example above "TR04FEN" is the number plate and "20211212114111243" is the timestamp, the timestamp is the same for both images
-  //We want to get a list of all these images in a workable format and the list has to also contain the data from the name properly formatted
-  //In the example above "TR04FEN" is the number plate and "20211212114111243" is the timestamp, the timestamp is the same for both images
-  //We want to get a list of all these images in a workable format and the list has to also contain the data from the name properly formatted
-
-  //come on please stop messing around
+import { Button, Card, Pagination } from 'react-bootstrap';
+import {Col, Row, Container} from 'react-bootstrap';
+import { Form } from 'react-bootstrap';
 
 
-  //stop
+export async function getServerSideProps(context) {
 
-  //the timestamp is in the following format, it has to be converted to date object for sorting by time purposes using moment.js
-  //"20211212114111243" is "YYYYMMDDHHMMSS", the last 3 digits being random numbers
-  const files = fs.readdirSync('./public/images/');
-  const images = files.map(file => {
-    const [plate, timestamp, type] = file.split('_');
-    const day = moment(timestamp.substring(0, 8), 'YYYYMMDD');
-    const time = moment(timestamp.substring(8), 'HHmmss');
-    //merge date and time
-    const date = moment(day).set({ 
-      hour: time.hour(),
-      minute: time.minute(),
-      second: time.second()
-    }).toObject();
-    //return the image.url
-    return {
-      plate,
-      timestamp,
-      date,
-      url: `/images/${file}`
-    }
-    });
+  const apiUrl = 'http://localhost:3001/images';
+  const images = await fetch(apiUrl)
+    .then(response => response.json())
+    .then(json => json.map(image => ({
+      id: image.id,
+      file: image.file,
+      plate: image.plate,
+      datetime: moment(image.datetime).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+    })));
+
+
+
   return {
     props: {
-      images
+      images: images,
     }
   }
-  //I get this error: Error: Error serializing `.images[0].date` returned from `getServerSideProps` in "/".
-  //Reason: `object` ("[object Date]") cannot be serialized as JSON. Please only return JSON serializable data types.
-  //Solution: return a date object in the following format: new Date(year, month, day, hours, minutes, seconds, milliseconds)
 }
+
 
 export default function Home({ images }) {
-  //usestate for search
+
+  const [results, setResults] = useState(images);
+  const [imagesOnPage, setImagesOnPage] = useState(images.slice(0, 10));
+
+  //filter params and search params
   const [search, setSearch] = useState('');
-  //usestate for sorting
-  const [sort, setSort] = useState('date');
-  //usestate for sorting direction
-  const [sortDir, setSortDir] = useState('desc');
-  //usestate for pagination
-  const [page, setPage] = useState(1);
-  //usestate for pagination size
-  const [pageSize, setPageSize] = useState(10);
-  //usestate for pagination size
-  const [total, setTotal] = useState(images.length);
-  //usestate for pagination size
-  const [pageCount, setPageCount] = useState(Math.ceil(images.length / pageSize));
-  //usestate for pagination size
-  const [pageImages, setPageImages] = useState(images.slice(0, pageSize));
-
-  const [selectedImage, setSelectedImage] = useState(null);
-
-  const [showModal, setShowModal] = useState(false);
+  const [sort, setSort] = useState('-');
+  const [filterCounty, setFilterCounty] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
+  const [filterDay, setFilterDay] = useState('');
+  const [filterYear, setFilterYear] = useState('');
 
   //modal
-  const handleClose = () => {
+  const [showModal, setShowModal] = useState(false);
+  const [modalImage, setModalImage] = useState('');
+
+  //pagination
+  const [page, setPage] = useState(1);
+  const [elementsOnPage, setElementsOnPage] = useState(10);
+  const [totalElements, setTotalElements] = useState(images.length);
+  const [totalPages, setTotalPages] = useState(Math.ceil(images.length / elementsOnPage));
+
+  //Button Handlers
+  const handleSearch = () => {
+    const searchResults = images.filter(image => image.plate.toLowerCase().includes(search.toLowerCase()));
+    setResults(searchResults);
+    setPagination();
+  }
+
+  const handleSort = () => {
+    if(sort === '-'){
+      const sortResults = images
+      alert("Nu ati selectat o metoda de sortare.");
+      setResults(sortResults);
+    }
+    if(sort === 'asc'){
+      const sortResults = images.sort((a, b) => (a.datetime > b.datetime) ? 1 : -1);
+      setResults(sortResults);
+    }
+    if(sort === 'desc'){
+      const sortResults = images.sort((a, b) => (a.datetime < b.datetime) ? 1 : -1);
+      setResults(sortResults);
+    }
+    setPagination();
+  }
+
+  const handleFilterCounty = () => {
+    if(filterCounty === 'None'){
+      const filterResults = images;
+      alert("Nu ati selectat judetul");
+      setResults(filterResults);
+    }
+    if(filterCounty !=  'None'){
+      const filterResults = images.filter(image => image.file.includes(filterCounty));
+      setResults(filterResults);
+    }
+    setPagination();
+  }
+
+  const handleFilterMonth = () => {
+    if(filterMonth === 'None'){
+      const filterResults = images;
+      alert("Nu ati selectat luna");
+      setResults(filterResults);
+    }
+    if(filterMonth !=  'None'){
+      const filterResults = results.filter(image => moment(image.datetime).format('MM') === filterMonth);
+      setResults(filterResults);
+    }
+    setPagination();
+  }
+
+  const handleFilterDay = () => {
+    if(filterDay === 'None'){
+      const filterResults = images;
+      alert("Nu ati selectat ziua");
+      setResults(filterResults);
+    }
+    if(filterDay !=  'None'){
+      const filterResults = results.filter(image => moment(image.datetime).format('DD') === filterDay);
+      setResults(filterResults);
+    } 
+    setPagination();
+  }
+
+
+  const setPagination = () => {
+    setPage(1);
+    setTotalElements(results.length);
+    setTotalPages(Math.ceil(results.length / elementsOnPage));
+    handleImagesOnPage()
+  }
+
+  const handleImagesOnPage = () => {
+    const start = (page - 1) * elementsOnPage;
+    const end = start + elementsOnPage;
+    const imagesOnPage = results.slice(start, end);
+    setImagesOnPage(imagesOnPage);
+  }
+
+  const handlePage = (page) => {
+    if(page <= totalPages || page > 0){
+      setPage(page);
+      handleImagesOnPage();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  const resetFiltersAndSearch = () => {
+    setSearch('');
+    setSort('-');
+    setFilterCounty('None');
+    setFilterMonth('None');
+    setFilterDay('None');
+    setPage(1);
+    setTotalElements(images.length);
+    setTotalPages(Math.ceil(images.length / elementsOnPage));
+    setResults(images);
+    handleImagesOnPage();
+    console.log("reset filters and search");
+    alert("Filtrele au fost resetate");
+  }
+
+  const handleModal = (image) => {
+    setModalImage(image);
+    setShowModal(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  const closeModal = () => {
     setShowModal(false);
-  };
+  }
+  //make the ui prettier
 
-  //modal doesn t work
-
-
-
-  //modal useeffect
-  useEffect(() => {
-    if (selectedImage) {
-      setShowModal(true);
-    }
-  }, [selectedImage]);
-
-  //useeffect for search
-  useEffect(() => {
-    const filtered = images.filter(image => image.plate.toLowerCase().includes(search.toLowerCase()));
-    setPageImages(filtered.slice(0, pageSize));
-    setTotal(filtered.length);
-    setPageCount(Math.ceil(filtered.length / pageSize));
-  }, [search, pageSize, images]);
-
-  //useeffect for sorting
-  useEffect(() => {
-    const sorted = images.sort((a, b) => {
-      if (sort === 'date') {
-        return sortDir === 'asc' ? a.date - b.date : b.date - a.date;
-      } else if (sort === 'plate') {
-        return sortDir === 'asc' ? a.plate.localeCompare(b.plate) : b.plate.localeCompare(a.plate);
-      }
-    });
-    setPageImages(sorted.slice(0, pageSize));
-  }, [sort, sortDir, pageSize, images]);
-
-  //useeffect for pagination
-  useEffect(() => {
-    setPageImages(images.slice((page - 1) * pageSize, page * pageSize));
-    if (pageSize > total) {
-      setPageSize(total);
-    }
-    if (page > pageCount) {
-      setPage(pageCount);
-    }
-    
-  }, [page, pageSize, images]);
-
-  //catch error for page size
   
-  //RangeError: Array size is not a small enough positive integer. on pagesize
-  //Solution: set pageSize to total if pageSize is greater than total
-
-  //return the page
-  //catch error if pagination is out of bounds
-
-  //setSelectedImage is not yet set
-  //Solution: setSelectedImage is not yet set
-
-
-
- 
-
   return (
     <>
-  <section className="content">
-        <div className="container-fluid">
-            <div className="col-sm-6">
-              <h1 className="m-0 text-dark">Runcu LPR Dashboard</h1>
-            </div>
-            <div className="col-sm-12">
-              <div className="row">
-                <div className="col-md-12">
-                  <div className="card card-primary">
-                    <div className="card-header">
-                      <h3 className="card-title">Search</h3>
-                    </div>
-                    <div className="card-body">
-                      <div className="form-group">
-                        <label htmlFor="search">Search</label>
-                        <input type="text" className="form-control" id="search" placeholder="Search" value={search} onChange={(e) => setSearch(e.target.value)} />
-                        <small className="form-text text-muted">Search for a specific number plate or timestamp</small>
-                        <div className="form-group">
-                          <label htmlFor="sort">Sort</label>
-                          <select className="form-control" id="sort" value={sort} onChange={(e) => setSort(e.target.value)}>
-                            <option value="date">Date</option>
-                            <option value="plate">Plate</option>
-                          </select>
-                          <small className="form-text text-muted">Sort by date or by plate</small>
-                          <div className="form-group">
-                            <label htmlFor="sortDir">Sort Direction</label>
-                            <select className="form-control" id="sortDir" value={sortDir} onChange={(e) => setSortDir(e.target.value)}>
-                              <option value="asc">Ascending</option>
-                              <option value="desc">Descending</option>
-                            </select>
-                            <small className="form-text text-muted">Sort ascending or descending</small>
-                            <label htmlFor="page">Page</label>
-                                <select className="form-control" id="page" value={page} onChange={(e) => setPage(e.target.value)}>
-                                  {[...Array(pageCount).keys()].map(i => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
-                                </select>
-                            <small className="form-text text-muted">Set the page</small>
-                            <div className="form-group">
-                              <div className="form-group">
-                                
-                                <div className="form-group">
-                                  <button className="btn btn-primary" onClick={() => {
-                                    const filteredImages = images.filter(image => image.plate.toLowerCase().includes(search.toLowerCase()) || image.timestamp.toLowerCase().includes(search.toLowerCase()));
-                                    const sortedImages = sortDir === 'asc' ? filteredImages.sort((a, b) => a[sort] > b[sort] ? 1 : -1) : filteredImages.sort((a, b) => a[sort] < b[sort] ? 1 : -1);
-                                    const pageImages = sortedImages.slice((page - 1) * pageSize, page * pageSize);
-                                    setPageImages(pageImages);
-                                    setTotal(sortedImages.length);
-                                    setPageCount(Math.ceil(sortedImages.length / pageSize));
-                                  }}>Search</button>
-                                </div>
-                                <div className="form-group">
-                                  <button className="btn btn-primary" onClick={() => {
-                                    setSearch('');
-                                    setSort('date');
-                                    setSortDir('desc');
-                                    setPage(1);
-                                    setPageSize(10);
-                                    setPageImages(images.slice(0, pageSize));
-                                    setTotal(images.length);
-                                    setPageCount(Math.ceil(images.length / pageSize));
-                                  }}>Reset</button>
-                                </div>
-                                <div className="form-group">
-                                  <button className="btn btn-primary" onClick={() => {
-                                    const sortedImages = sortDir === 'asc' ? images.sort((a, b) => a[sort] > b[sort] ? 1 : -1) : images.sort((a, b) => a[sort] < b[sort] ? 1 : -1);
-                                    const pageImages = sortedImages.slice((page - 1) * pageSize, page * pageSize);
-                                    setPageImages(pageImages);
-                                    setTotal(sortedImages.length);
-                                    setPageCount(Math.ceil(sortedImages.length / pageSize));
-                                  }}>Sort</button>
-                                </div>
-                                <div className="form-group">
-                                  <button className="btn btn-primary" onClick={() => {
-                                    const sortedImages = sortDir === 'asc' ? images.sort((a, b) => a[sort] > b[sort] ? 1 : -1) : images.sort((a, b) => a[sort] < b[sort] ? 1 : -1);
-                                    const pageImages = sortedImages.slice((page - 1) * pageSize, page * pageSize);
-                                    const pageCount = Math.ceil(sortedImages.length / pageSize);
-                                    const page = pageCount > 0 ? pageCount : 1;
-                                    const pageSize = pageCount > 0 ? sortedImages.length : images.length;
-                                    const total = sortedImages.length;
-                                    setPageImages(pageImages);
-                                    setTotal(total);
-                                    setPageCount(pageCount);
-                                    setPage(page);
-                                    setPageSize(pageSize);
-                                  }}>Sort and Paginate</button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="card"> 
-                        <div className="card-header">
-                          <h5>Results</h5>
-                          <h6>{total} results</h6>
-                          <h6>{pageCount} pages</h6>
-                          <h6>{page} page</h6>
-                          <h6>{pageSize} results per page</h6>
-                          <h6>{pageImages.length} results on this page</h6>
-                          <h6>{pageImages.length === 0 ? 'No results' : ''}</h6>
-                          <h6>{pageImages.length === 1 ? '1 result' : ''}</h6>
-                          <h6>{pageImages.length > 1 ? `${pageImages.length} results` : ''}</h6>
-                        </div>
-                        <div className="card-body">
-                          <div className="row">
-                            {pageImages.map(image => (
-                              <div className="col-sm-6 col-md-4 col-lg-3" key={image.id}>
-                                <div className="card">
-                                  <img className="card-img-top" src={image.url} alt="" />
-                                  <div className="card-body">
-                                    <h5 className="card-title">{image.plate}</h5>
-                                    <p className="card-text">{moment(image.date).format("DD MMM, YYYY - HH:MM:SS")}</p>
-                                    <button className="btn btn-primary" onClick={() => {
-                                      setSelectedImage(image);
-                                      setShowModal(true);
-                    
+      <Head>
+        <title>LPR Dashboard</title>
+        <link rel="manifest" href="manifest.json" />
+        <meta name="mobile-web-app-capable" content="yes"/>
+        <meta name="application-name" content="RuncuLPR"/>
+        <meta name="apple-mobile-web-app-title" content="RuncuLPR"/>
+        <meta name="theme-color" content="#0275d8"/>
+        <meta name="msapplication-navbutton-color" content="#0275d8"/>
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+        <meta name="msapplication-starturl" content="/"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+        <link rel="apple-touch-icon" href="apple-icon-180.png"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2048-2732.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2732-2048.jpg" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1668-2388.jpg" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2388-1668.jpg" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1536-2048.jpg" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2048-1536.jpg" media="(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1668-2224.jpg" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2224-1668.jpg" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1620-2160.jpg" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2160-1620.jpg" media="(device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1284-2778.jpg" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2778-1284.jpg" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1170-2532.jpg" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2532-1170.jpg" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1125-2436.jpg" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2436-1125.jpg" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1242-2688.jpg" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2688-1242.jpg" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-828-1792.jpg" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1792-828.jpg" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1242-2208.jpg" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-2208-1242.jpg" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-750-1334.jpg" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1334-750.jpg" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-640-1136.jpg" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)"/>
+        <link rel="apple-touch-startup-image" href="apple-splash-1136-640.jpg" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)"/>
 
-                                    }}>View</button>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                         </div>     
-                      </div>
-                      <div className="card-footer">
-                            <div className="row">
-                              <div className="col-sm-6 col-md-4 col-lg-3">
-                                <button className="btn btn-primary" onClick={() => {
-                                  setPage(1);
-                                  setPageImages(images.slice(0, pageSize));
-                                }}>First</button>
-                                <button className="btn btn-primary" onClick={() => {
-                                  setPage(page - 1);
-                                  setPageImages(images.slice((page - 1) * pageSize, page * pageSize));
-                                }}>Previous</button>
-                                <button className="btn btn-primary" onClick={() => {
-                                  setPage(page + 1);
-                                  setPageImages(images.slice((page - 1) * pageSize, page * pageSize));
-                                }}>Next</button>
-                                <button className="btn btn-primary" onClick={() => {
-                                  setPage(pageCount);
-                                  setPageImages(images.slice((page - 1) * pageSize, page * pageSize));
-                                }}>Last</button>
-                              </div>
-                            </div>
-                          </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-      </section>
-
-      {showModal && (
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{selectedImage.plate}</Modal.Title>
-        </Modal.Header> 
-        <Modal.Body >
-          <img src={selectedImage.url} alt="" width="70%"/>
-        </Modal.Body>
-        <Modal.Footer>
-          <button className="btn btn-primary" onClick={() => setShowModal(false)}>Close</button>
-        </Modal.Footer> 
-      </Modal>
-      )}
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <Container>
+        <Row>
+          <Col>
+            <h1 className='content-align-center'>LPR Dashboard</h1>
+          </Col>
+        </Row>
+        <Row style={{marginTop: '20px',marginBottom: '20px'}}>
+          <Col>
+            <Form inline>
+              <Form.Control type="text" placeholder="Search" className="mr-sm-2" onChange={(e) => setSearch(e.target.value)}></Form.Control>
+            </Form>
+          </Col>
+        </Row>
+        <Row style={{marginBottom: '20px'}}>
+          <Col>
+            <Form inline>
+              <Button variant="outline-primary" onClick={handleSearch} style={{marginInline: '5px'}}>Search</Button>
+              <Button variant="outline-success" onClick={handleSort} style={{marginInline: '5px'}}>Sort</Button>
+              <Button variant="outline-success" onClick={handleFilterCounty} style={{marginInline: '5px'}}>Filtru Judet</Button>
+              <Button variant="outline-success" onClick={handleFilterMonth} style={{marginInline: '5px'}}>Filtru Luna</Button>
+              <Button variant="outline-success" onClick={handleFilterDay} style={{marginInline: '5px'}}>Filtru Zi</Button>
+              <Button variant="outline-danger" onClick={resetFiltersAndSearch} style={{marginInline: '5px'}}>Reset Filtre</Button>
+            </Form>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <Form>
+              <Form.Group controlId="formBasicEmail">
+                <Form.Label>Sort</Form.Label>
+                <Form.Control as="select" onChange={(e) => setSort(e.target.value)}>
+                  <option>-</option>
+                  <option>asc</option>
+                  <option>desc</option>
+                </Form.Control>
+              </Form.Group> 
+            </Form>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <Form>
+              <Form.Group controlId="formBasicEmail">
+                <Form.Label>Filter County</Form.Label>
+                <Form.Control as="select" onChange={(e) => setFilterCounty(e.target.value)}>
+                  <option>None</option>
+                  <option>AB</option>
+                  <option>AR</option>
+                  <option>AG</option>
+                  <option>BC</option>
+                  <option>BH</option>
+                  <option>BN</option>
+                  <option>BT</option>
+                  <option>BV</option>
+                  <option>BR</option>
+                  <option>BZ</option>
+                  <option>CS</option>
+                  <option>CL</option>
+                  <option>CJ</option>
+                  <option>CT</option>
+                  <option>CV</option>
+                  <option>DB</option>
+                  <option>DJ</option>
+                  <option>GL</option>
+                  <option>GR</option>
+                  <option>GJ</option>
+                  <option>HR</option>
+                  <option>HD</option>
+                  <option>IL</option>
+                  <option>IS</option>
+                  <option>IF</option>
+                  <option>MM</option>
+                  <option>MH</option>
+                  <option>MS</option>
+                  <option>NT</option>
+                  <option>OT</option>
+                  <option>PH</option>
+                  <option>SM</option>
+                  <option>SJ</option>
+                  <option>SB</option>
+                  <option>SV</option>
+                  <option>TR</option>
+                  <option>TM</option>
+                  <option>TL</option>
+                  <option>VS</option>
+                  <option>VL</option>
+                  <option>VN</option>
+                  <option>B</option>
+                </Form.Control>
+              </Form.Group>
+            </Form>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <Form>
+              <Form.Group controlId="formBasicEmail">
+                <Form.Label>Filter Month</Form.Label>
+                <Form.Control as="select" onChange={(e) => setFilterMonth(e.target.value)}>
+                  <option>None</option>
+                  <option>01</option>
+                  <option>02</option>
+                  <option>03</option>
+                  <option>04</option>
+                  <option>05</option>
+                  <option>06</option>
+                  <option>07</option>
+                  <option>08</option>
+                  <option>09</option>
+                  <option>10</option>
+                  <option>11</option>
+                  <option>12</option>
+                </Form.Control>
+              </Form.Group>
+            </Form>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            <Form>
+              <Form.Group controlId="formBasicEmail">
+                <Form.Label>Filter Day</Form.Label>
+                <Form.Control as="select" onChange={(e) => setFilterDay(e.target.value)}>
+                  <option>None</option>
+                  <option>01</option>
+                  <option>02</option>
+                  <option>03</option>
+                  <option>04</option>
+                  <option>05</option>
+                  <option>06</option>
+                  <option>07</option>
+                  <option>08</option>
+                  <option>09</option>
+                  <option>10</option>
+                  <option>11</option>
+                  <option>12</option>
+                  <option>13</option>
+                  <option>14</option>
+                  <option>15</option>
+                  <option>16</option>
+                  <option>17</option>
+                  <option>18</option>
+                  <option>19</option>
+                  <option>20</option>
+                  <option>21</option>
+                  <option>22</option>
+                  <option>23</option>
+                  <option>24</option>
+                  <option>25</option>
+                  <option>26</option>
+                  <option>27</option>
+                  <option>28</option>
+                  <option>29</option>
+                  <option>30</option>
+                  <option>31</option>
+                </Form.Control>
+              </Form.Group>
+            </Form>
+          </Col>
+        </Row>
+        <Row style={{marginTop: '20px'}}>
+          <Col>
+            {imagesOnPage.map((image, index) => {
+              return (
+                <Card style={{marginTop: '20px'}}>
+                  <Card.Img variant="top" src={image.file} />
+                  <Card.Body>
+                    <Card.Title>{image.plate}</Card.Title>
+                    <Card.Text>
+                      {moment(image.datetime).format('MMMM Do YYYY, h:mm:ss')}
+                    </Card.Text>
+                  </Card.Body>
+                  <Card.Footer>
+                    <Button variant="primary" onClick={() => handleModal(image)}>View</Button>
+                  </Card.Footer>
+                </Card>
+              )
+            }
+            )}
+          </Col>
+        </Row>
+        <Row style={{marginTop:'30px'}}>
+          <Col>
+            <Pagination>
+              <Pagination.First onClick={() => handlePage(1)}/>
+              <Pagination.Prev onClick={() => handlePage(page - 1)}/>
+              {() => {for(let i = 1; i <= totalPages; i++){
+                return (
+                  <>
+                     <Pagination.Item onClick={() => handlePage(i)}>{i}</Pagination.Item>
+                  </>
+                );
+              }}}
+              <Pagination.Next onClick={() => handlePage(page + 1)}/>
+              <Pagination.Last onClick={() => handlePage(totalPages)}/>
+            </Pagination>
+          </Col>
+        </Row>
+        {showModal && (
+          <Modal show={showModal} onHide={closeModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>{modalImage.plate}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <img src={modalImage.file} alt="" width="80%" />
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={closeModal}>
+                Close
+              </Button>
+            </Modal.Footer>
+          </Modal>
+        )}
+      </Container>
       </>
-    
-  );
+  
+  )
 }
+
+
+
+
+

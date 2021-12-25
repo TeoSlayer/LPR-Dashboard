@@ -1,0 +1,11 @@
+
+{
+    "name": "LPR Dashboard Runcu",
+    "short_name": "RuncuLPR",
+    "description": "Dashboard pentru management si supraveghere imagini LPR.",
+    "lang": "ro-RO",
+    "start_url": "/",
+    "display": "standalone",
+    "theme_color": "#0275d8",
+    "background_color": "#f7f7f7"
+}
