@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+[![Node.js CI](https://github.com/TeoSlayer/LPR-Dashboard/actions/workflows/node.js.yml/badge.svg)](https://github.com/TeoSlayer/LPR-Dashboard/actions/workflows/node.js.yml)
 
 ## Getting Started
 
