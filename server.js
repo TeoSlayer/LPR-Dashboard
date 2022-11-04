@@ -1,16 +1,3 @@
-// host ftp server for receiving image files in .jpg format
-// host them locally on the server in /public/images/
-// store image data in sqlite db
-// on receiving a new image, add the image to the db
-// listen for changes in the directory /public/images/ and update the db when a new image is added
-// files are in the following format : "TR04FEN_20211212114111243_PLATE.jpg" or "TR04FEN_20211212114111243_BACKGROUND.jpg"
-// extract the parameters separated by "_" from the file name and store in the db, together with the file path
-// the parameters are :
-// Plate: TR04FEN
-// Date: 20211212
-// Time: 114111
-// The last 3 digits are a random number
-
 const moment = require('moment');
 const express = require('express');
 const app = express();
@@ -74,10 +61,8 @@ fs.watch('./public/images/', (eventType, filename) => {
 );
 
 
-//create a cron job to run the checkDuplicates function every minute
 cron.schedule('* * * * *', () => {
     console.log('running a task every minute');
-    //save database to disk
 
     //checkDuplicates();
     //checkIfUnsyncFile();
@@ -114,7 +99,6 @@ const checkIfUnsyncFile = () => {
 });
 };
 
-//check if files are duplicated in db, if they are delete them from db
 const checkDuplicates = () => {
     db.serialize(() => {
         db.each(`SELECT * FROM images`, (err, row) => {
